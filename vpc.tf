@@ -34,7 +34,7 @@ resource "aws_subnet" "public_subnet" {
   enable_resource_name_dns_a_record_on_launch    = true
   
   tags = {
-    Name = "mrtonero_public_subnet ${count.index + 1}"
+    Name = "Mrtonero_Public_subnet ${count.index + 1}"
   }
 }
 
@@ -46,7 +46,7 @@ resource "aws_subnet" "private_subnet" {
   availability_zone = local.availability_zone[count.index]
 
   tags = {
-    Name = "mrtonero_private_subnet ${count.index + 1}"
+    Name = "Mrtonero_Private_subnet ${count.index + 1}"
   }
 }
 
@@ -62,8 +62,8 @@ resource "aws_internet_gateway_attachment" "mrtonero_igw_attachment" {
   internet_gateway_id = aws_internet_gateway.mrtonero_igw.id
 }
 
-## Route table for the IGW interface
-resource "aws_route_table" "igw_route_table" {
+# Route table for public subnet
+resource "aws_route_table" "public_rt" {
   vpc_id = aws_vpc.mrtonero-vpc.id
 
   route {
@@ -71,23 +71,12 @@ resource "aws_route_table" "igw_route_table" {
     gateway_id = aws_internet_gateway.mrtonero_igw.id
   }
   tags = {
-    Name = "igw_route_table"
+    Name = "Public_rt"
   }
 }
-
-## Elastic ip for the nat_gatway
-resource "aws_eip" "mrtonero_eip" {
-  count  = 2
-  domain = "vpc"
-}
-
-
-
-## Nat gateway 
-resource "aws_nat_gateway" "mrtonero_nat_gateway" {
-  for_each = {
-    for idx, eip in aws_eip.mrtonero_eip : idx => eip
-  }
-  allocation_id = each.value.id
-  subnet_id     = aws_subnet.public_subnet[each.key % length(aws_subnet.public_subnet)].id
+# https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route_table_association
+resource "aws_route_table_association" "Public_rt_association" {
+  count           = length(aws_subnet.public_subnet[*])
+  route_table_id  = aws_route_table.public_rt.id
+  subnet_id       = aws_subnet.public_subnet[count.index].id
 }
